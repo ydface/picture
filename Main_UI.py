@@ -9,7 +9,9 @@ import sys
 import pygame.mixer
 from pygame.locals import *
 import mypygame
-
+import dig_image
+from dig_image import *
+import cPickle
 screen = mypygame.screen
 
 swidth = mypygame.screenwidth
@@ -49,6 +51,10 @@ class MainUI(object):
 
         self.key_input = False
         self.key = ""
+
+        self.digs = []
+        self.focus = True
+
     def draw(self):
         screen.fill((0, 0, 0))
         pygame.draw.rect(screen, (255, 255, 0), (fwidth, 0, 2, sheight))
@@ -77,6 +83,8 @@ class MainUI(object):
         screen.set_clip(0, 0, swidth, sheight)
 
         screen.blit(self.out_image, (0, 0))
+        for dig in self.digs:
+            screen.blit(dig.image, (dig.rect[0], dig.rect[1]))
 
     def handle_event(self,event):
         if event.type == MOUSEBUTTONDOWN and pygame.mouse.get_pressed()[0]:
@@ -85,16 +93,27 @@ class MainUI(object):
                 self.input = True
             elif self.save_rect.collidepoint(position):
                 self.output = True
+            for dig in self.digs:
+                dig.handle_event(event)
             if position[0] > fwidth and position[1] > 20:
                 self.clicked = True
                 self.s_x = position[0]
                 self.s_y = position[1]
+                self.focus = True
+            elif position[0] < fwidth:
+                self.focus = False
         elif event.type == MOUSEBUTTONDOWN and pygame.mouse.get_pressed()[2]:
             self.s_x = 0
             self.s_y = 0
             self.t_x = 0
             self.t_y = 0
+            for dig in self.digs:
+                dig.handle_event(event)
         elif event.type == KEYDOWN:
+            if not self.focus:
+                for dig in self.digs:
+                    dig.handle_event(event)
+                return
             if event.key == K_LEFT:
                 self.in_rect[0] -= 5
                 self.offest += 5
@@ -110,13 +129,14 @@ class MainUI(object):
                     self.in_rect.topleft = (fwidth, 20)
                     self.open_file = "resource/"
                     self.input = False
+                    self.offest = 0
                 else:
                     self.open_file += event.unicode
             elif self.output:
                 if event.key == K_BACKSPACE:
                     self.out_file = self.out_file[:-1]
                 elif event.key == K_RETURN:
-                    pygame.image.save(self.out_image, self.out_file)
+                    self.save_image()
                     self.out_file = "resource/"
                 else:
                     self.out_file += event.unicode
@@ -128,16 +148,17 @@ class MainUI(object):
                     i_x = self.s_x - fwidth + self.offest
                     w = self.t_x - self.s_x
                     h = self.t_y - self.s_y
+                    print i_x, i_y, w, h
                     image = self.in_image.subsurface((i_x, i_y), (w, h))
                     if self.out_x + w < max_out:
-                        self.out_image.blit(image, (self.out_x, self.out_y))
-                        print '\"' + self.key + '\":', "{\"x\":", self.out_x, ",\"y\":", self.out_y, ",\"w\":", w, ",\"h\":", h, "}"
+                        dig = DigImage(self, self.key, image, self.out_x, self.out_y, w, h)
+                        self.digs.append(dig)
                         self.out_x += w
                     else:
                         self.out_x = 0
                         self.out_y += h
-                        self.out_image.blit(image, (self.out_x, self.out_y))
-                        print '\"' + self.key + '\":', "{\"x\":", self.out_x, ",\"y\":", self.out_y, ",\"w\":", w, ",\"h\":", h, "}"
+                        dig = DigImage(self, self.key, image, self.out_x, self.out_y, w, h)
+                        self.digs.append(dig)
                     self.key = ""
                     self.key_input = False
                 else:
@@ -147,13 +168,26 @@ class MainUI(object):
                 position = pygame.mouse.get_pos()
                 self.t_x = position[0]
                 self.t_y = position[1]
+            for dig in self.digs:
+                dig.handle_event(event)
         elif event.type == MOUSEBUTTONUP:
             if self.clicked:
                 #if self.s_x:
                 self.key_input = True
                 self.output = False
                 self.clicked = False
+            for dig in self.digs:
+                dig.handle_event(event)
 
+    def save_image(self):
+        out_ini = []
+        for dig in self.digs:
+            self.out_image.blit(dig.image, (dig.rect[0], dig.rect[1]))
+            out_ini.append(dig.get_ini())
+        out = open(self.out_file + ".ini", "wb")
+        cPickle.dump(out_ini, out)
+        out.close()
+        pygame.image.save(self.out_image, self.out_file + ".png")
 
     @staticmethod
     def draw_label(text, pos):
