@@ -27,7 +27,14 @@ class DigImage(object):
         self.clicked = False
 
     def get_ini(self):
-        return '\"' + str(self.key) + '\":' + "{\"x\":" + str(self.rect[0]) + ",\"y\":" + str(self.rect[1]) + ",\"w\":" + str(self.w) + ",\"h\":" + str(self.h) + "}"
+        out = dict()
+        out["key"] = self.key
+        out["x"] = self.rect[0]
+        out["y"] = self.rect[1]
+        out["w"] = self.w
+        out["h"] = self.h
+        return  out
+        #return '\"' + str(self.key) + '\":' + "{\"x\":" + str(self.rect[0]) + ",\"y\":" + str(self.rect[1]) + ",\"w\":" + str(self.w) + ",\"h\":" + str(self.h) + "}"
 
     def handle_event(self, event):
         if event.type == MOUSEBUTTONDOWN and pygame.mouse.get_pressed()[0]:
